@@ -93,7 +93,7 @@ class IntegerField(Field):
 
 class FloatField(Field):
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name, primary_key, default)
+        super().__init__(name, 'real', primary_key, default)
 
 
 class TextField(Field):
@@ -144,7 +144,7 @@ class Model(dict, metaclass=ModelMetaclass):
         try:
             return self[item]
         except KeyError:
-            raise AttributeError(r"'Model' object has no attribute '%s'" % key)
+            raise AttributeError(r"'Model' object has no attribute '%s'" % item)
 
     def __setattr__(self, key, value):
         self[key] = value
