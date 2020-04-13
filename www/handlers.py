@@ -267,3 +267,13 @@ async def api_create_blog(request, *, name, summary, content, id=''):
         blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
         await blog.save()
     return blog
+
+
+@post('/api/blogs/{id}/delete')
+async def api_delete_blog(request, *, id):
+    check_admin(request)
+    blog = await Blog.find(id)
+    if not blog:
+        raise APIResourceNotFoundError('id', 'the blog was not found.')
+    await blog.remove()
+    return blog
