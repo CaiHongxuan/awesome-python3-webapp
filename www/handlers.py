@@ -13,7 +13,7 @@ import markdown2
 from aiohttp import web
 
 from coroweb import get, post
-from apis import APIError, APIValueError, APIPermissionError, APIResourceNotFoundError
+from apis import APIError, APIValueError, APIPermissionError, APIResourceNotFoundError, Page
 
 from models import User, Comment, Blog, next_id
 from config import configs
@@ -207,11 +207,28 @@ def signout(request):
     return r
 
 
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }
+
+
 @get('/manage/blogs/create')
 def manage_create_blog():
     return {
         '__template__': 'manage_blog_edit.html',
         'id': '',
+        'action': '/api/blogs'
+    }
+
+
+@get('/manage/blogs/edit')
+async def manage_edit_blog(*, id):
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': id,
         'action': '/api/blogs'
     }
 
@@ -222,8 +239,19 @@ async def api_get_blog(*, id):
     return blog
 
 
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
+
+
 @post('/api/blogs')
-async def api_create_blog(request, *, name, summary, content):
+async def api_create_blog(request, *, name, summary, content, id=''):
     check_admin(request)
     if not name or not name.strip():
         raise APIValueError('name', 'name cannot be empty.')
@@ -231,6 +259,11 @@ async def api_create_blog(request, *, name, summary, content):
         raise APIValueError('summary', 'summary cannot be empty.')
     if not content or not content.strip():
         raise APIValueError('content', 'content cannot be empty.')
-    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
-    await blog.save()
+    if id:
+        blog = Blog(id=id, user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image,
+                    name=name.strip(), summary=summary.strip(), content=content.strip())
+        await blog.update()
+    else:
+        blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
+        await blog.save()
     return blog
